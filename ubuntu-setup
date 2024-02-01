@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+set -eu -o pipefail
+
+# Initial laptop setup with Ubuntu 22.04
+
+version_id=$(awk -F= '/VERSION_ID/ {print $2}' /etc/os-release)
+if ! [[ $version_id =~ 22.04 ]]; then
+    echo "Requires Ubuntu 22.04"
+    exit 1
+fi
+
+sudo apt update && sudo apt upgrade -y
+
+# https://launchpad.net/~deadsnakes
+if ! apt-add-repository --list | grep deadsnakes &> /dev/null; then
+    sudo add-apt-repository "ppa:deadsnakes/ppa"
+    sudo apt update
+fi
+
+# shellcheck disable=SC2046
+sudo apt install -y $(cat ubuntu-packages)
+
+sudo snap refresh
+
+snaps="code kubectl scc terraform"
+for snap in $snaps; do
+    sudo snap install --classic "$snap"
+done
+
+sudo snap set system refresh.timer=sun,01:00-02:00
+
+if ! command -v tokei &> /dev/null; then
+    sudo wget -qO tokei.tar.gz https://github.com/XAMPPRocky/tokei/releases/latest/download/tokei-x86_64-unknown-linux-gnu.tar.gz
+    mkdir -p ~/.local/bin
+    sudo tar xf tokei.tar.gz -C ~/.local/bin
+    rm -f tokei.tar.gz
+fi
